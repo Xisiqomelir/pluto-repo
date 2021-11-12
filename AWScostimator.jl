@@ -18,7 +18,15 @@ end
 begin
 	using PlutoUI
 	using Plots
+	using Printf
 end
+
+# ╔═╡ 38f96e05-48fd-4083-b240-487c2e421a90
+md"""
+-----------------------------------
+### AWS Cost Estimator
+©2021, Kabam Robotics of Singapore
+"""
 
 # ╔═╡ 15ab57f0-d5d0-473f-8642-0268e76ab501
 plotly()
@@ -29,6 +37,7 @@ begin
 	#botcount=🤖
 	#botstring=repeat("🤖",$(🤖))
 	md"""
+	-----------------------------------
 	##### How many bots are we running?
 	
 	bots: 1 $(bot_slider) 10
@@ -59,15 +68,6 @@ md"""
 # ╔═╡ f9605919-818f-4f06-9396-c6a95ee38747
 AvgMissionTime = @bind AvgMissionTime NumberField(1:3, default=1)
 
-# ╔═╡ 832b2a69-655e-4284-8696-65d73711b6d8
-md"""
-Based on your settings:
-
-In a week, one 🤖 performs missions for **$(Daily*AvgMissionTime*7) hours**
-
-and total site mission time per week is **$(Daily*AvgMissionTime*7*🤖) hours**
-"""
-
 # ╔═╡ 3685d09c-2896-4233-80c5-1f9d9c806bf5
 md"""
 	##### Which vision modules will you run?
@@ -86,36 +86,15 @@ md"""
 	
 	`Flow of Human Traffic Counter = ` $(@bind peepcnt html"<input type=checkbox >")
 	
-	`Unspecified Bespoke KabamVision™ Module = ` $(@bind kbmvis html"<input type=checkbox >")
+	`Bespoke KabamVision™ Module = ` $(@bind kbmvis html"<input type=checkbox >")
 	"""
 
 
 # ╔═╡ 65c4f30e-7d7d-4eef-a78d-f2e61b91cb00
-begin
-	optslist=[facmat,mskdet,mskfacmat,crwdet,bags,cars,peepcnt,kbmvis];
-	optioncount=sum(optslist);
-end
+optslist=[facmat,mskdet,mskfacmat,crwdet,bags,cars,peepcnt,kbmvis];
 
-# ╔═╡ 16a62f2c-680f-4ab1-a874-4600bdb55e11
-#md"""
-#Options table for selected SageMaker CV modules
-
-#Facial Recognition & Matching: **$facmat**
-
-#Mask and PPE Detector: **$mskdet**
-
-#Facial Recognition & Matching (fully-masked subjects): **$mskfacmat**
-
-#Crowding and Distancing detection: **$crwdet**
-
-#Abandoned Baggage Detection: **$bags**
-
-#Idle Cars: **$cars**
-
-#Flow of Human Traffic Counter: **$peepcnt**
-
-#Unspecified Bespoke KabamVision™ Module: **$kbmvis**
-#"""
+# ╔═╡ a576afca-414c-475b-94f2-fdd8f8e5116a
+optioncount=sum(optslist);
 
 # ╔═╡ fe72f7dc-247e-4a53-b8c6-bc51bc7ac436
 md"""
@@ -124,23 +103,73 @@ md"""
 
 # ╔═╡ 29195aa6-f9c5-4ceb-8708-ae2fa28a66ba
 md"""
-##### Are we using Real-time or Delayed inference?
+##### Which AWS Instance are we using?
 
-`AWSRate = ` $(@bind awspick html"<select><option value='1'>Real-Time</option><option value='2'>Delayed</option></select>")
+All listed types are **ONE GPU** except for p2.16x. Generally a higher x instance type of the same class has more CPU threads and more RAM. We assume g4dn.x, the lowest-cost instance type, to be able to support at least one module of live inference.
+
+###### Pending: Real-time vs Asynchronous price differentiation
+
+`AWSType = ` $(@bind awspick html"<select><option value='1'>g4dn.x</option><option value='2'>g4dn.2x</option><option value='3'>g4dn.4x</option><option value='4'>g4dn.8x</option><option value='5'>g4dn.16x</option><option value='6'>p2.x</option><option value='7'>p3.2x</option><option value='8'>p2.16x</option></select>")
 
 Hourly AWS rate per instance per hour in dollars:
 """
 
 # ╔═╡ 24be0601-338b-4d60-a3dd-79fcf9d7eaee
 if awspick=="1"
-	awsrate=3
+	awsrate=1.0304
 elseif awspick=="2"
-	awsrate=3*0.5
+	awsrate=1.315
+elseif awspick=="3"
+	awsrate=2.106
+elseif awspick=="4"
+	awsrate=3.806
+elseif awspick=="5"
+	awsrate=7.611
+elseif awspick=="6"
+	awsrate=2.147
+elseif awspick=="7"
+	awsrate=5.293
+elseif awspick=="8"
+	awsrate=31.611
 end
+
+# ╔═╡ 214e7399-d558-4ce4-a714-67c50eb74c79
+cognislurm=25000;
+
+# ╔═╡ 8129d2dc-62aa-41e2-bef1-b637b6e26296
+md"""
+--------------------------------
+## Plotting
+"""
+
+# ╔═╡ 6ad23213-e982-4573-9619-44a32fc2819e
+years = [2022:2031];
+
+# ╔═╡ 478e9605-416e-475b-b9f6-86368440adbc
+awscosts=[Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*2,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*3,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*4,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*5,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*6,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*7,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*8,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*9,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*10];
+
+# ╔═╡ 365017aa-842c-4551-a439-1cfb24c61d70
+cognislurmcosts=[cognislurm,cognislurm,cognislurm,2*cognislurm,2*cognislurm,2*cognislurm,2*cognislurm,3*cognislurm,3*cognislurm,3*cognislurm];
+
+# ╔═╡ e08d74cf-6954-4530-9f9f-fe53f5470182
+begin
+	plot(years,awscosts,label="AWS")
+	plot!(years,cognislurmcosts,label="CogniSLURM")
+end
+
+# ╔═╡ 832b2a69-655e-4284-8696-65d73711b6d8
+md"""
+------------------------------------
+Based on your settings:
+
+In a week, one 🤖 performs missions for **$(Daily*AvgMissionTime*7) hours**
+
+and total site mission time per week is **$(Daily*AvgMissionTime*7*🤖) hours**
+"""
 
 # ╔═╡ 4c17a490-66d7-471b-9533-a1c6adc0218a
 md"""
-Estimated AWS costs for the predicted use rates are:
+Estimated **total site** AWS costs for the predicted use rates are:
 
 **Per week:\$ $(Daily*AvgMissionTime*7*🤖*optioncount*awsrate)**
 
@@ -152,42 +181,42 @@ Estimated AWS costs for the predicted use rates are:
 
 """
 
-# ╔═╡ 0fd3f796-80b1-433c-b775-5449613184c7
-md"""
-CogniSLURM option
-
-Current 3080 prices: ~$3000
-
-Frame and fixed build costs: ~$2000
-
-Unit cost: ~$20,000
-"""
-
-# ╔═╡ 214e7399-d558-4ce4-a714-67c50eb74c79
-cognislurm=40000
-
-# ╔═╡ 8129d2dc-62aa-41e2-bef1-b637b6e26296
-md"""
-## Plotting
-"""
-
-# ╔═╡ 6ad23213-e982-4573-9619-44a32fc2819e
-years = [2022:2031]
-
-# ╔═╡ 478e9605-416e-475b-b9f6-86368440adbc
-awscosts=[Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*2,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*3,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*4,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*5,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*6,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*7,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*8,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*9,Daily*AvgMissionTime*7*🤖*optioncount*awsrate*4*3*3*10]
-
-# ╔═╡ 365017aa-842c-4551-a439-1cfb24c61d70
-cognislurmcosts=[cognislurm,cognislurm,cognislurm,2*cognislurm,2*cognislurm,2*cognislurm,2*cognislurm,3*cognislurm,3*cognislurm,3*cognislurm]
-
-# ╔═╡ e08d74cf-6954-4530-9f9f-fe53f5470182
-begin
-	plot(years,awscosts,label="AWS")
-	plot!(years,cognislurmcosts,label="CogniSLURM")
-end
+# ╔═╡ 2f7e7ee7-6b18-40ae-9980-39d87cca0984
+hrly_cost=(optioncount*awsrate);
 
 # ╔═╡ dc481aee-4d82-43e7-9dbe-b0b9afb29a2c
+md"""
+-------------------------------
+#### Estimated Sagemaker costs per **individual** 🤖/hr (\$ for one hour on one robot):
 
+\$**$hrly_cost**
+-------------------------------
+"""
+
+# ╔═╡ 05ba4b87-25da-4bde-81a6-b2f2c04d9794
+md"""
+#### Assumptions
+One model will require one SageMaker instance on one endpoint.
+There is a possibility that this can be reduced (pending Amazon input)
+
+**Storage has yet to be factored**
+"""
+
+# ╔═╡ 0fd3f796-80b1-433c-b775-5449613184c7
+md"""
+------------------------------------------------
+### CogniSLURM option
+
+Current 3080 prices: ~\$3000 (source: https://www.newegg.com/p/pl?N=100007709%20601357282%20601357261)
+
+Frame and fixed build costs: ~\$2000 
+
+Assume 6 GPU + Frame + Assembly + Maintenance + Power
+
+==>**Unit cost: ~\$25,000**
+
+Assume new build every 30 months
+"""
 
 # ╔═╡ cd97aa0a-bd72-42f4-a8c1-73146ecb186d
 
@@ -218,6 +247,7 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
 [compat]
 Plots = "~1.23.5"
@@ -1103,31 +1133,34 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╠═352e93f4-429d-11ec-239d-2798768ab4c8
-# ╠═15ab57f0-d5d0-473f-8642-0268e76ab501
-# ╠═ef188cb5-1c6b-4211-b94f-58fe14c2aea1
+# ╟─38f96e05-48fd-4083-b240-487c2e421a90
+# ╟─352e93f4-429d-11ec-239d-2798768ab4c8
+# ╟─15ab57f0-d5d0-473f-8642-0268e76ab501
+# ╟─ef188cb5-1c6b-4211-b94f-58fe14c2aea1
 # ╟─9ab4704e-ecf2-4015-a9ec-201ec5cd51f8
 # ╟─4fd41325-64a2-4948-b9d1-26cb3301bdbe
 # ╟─01b37f2c-14bd-4a7b-b578-aef5c21dfb01
 # ╟─51603761-406e-4283-a07a-656e472d0b8a
 # ╟─7b30678d-63cd-4df4-8210-7d630eed40cd
 # ╟─f9605919-818f-4f06-9396-c6a95ee38747
-# ╟─832b2a69-655e-4284-8696-65d73711b6d8
 # ╟─3685d09c-2896-4233-80c5-1f9d9c806bf5
 # ╟─65c4f30e-7d7d-4eef-a78d-f2e61b91cb00
-# ╟─16a62f2c-680f-4ab1-a874-4600bdb55e11
+# ╟─a576afca-414c-475b-94f2-fdd8f8e5116a
 # ╟─fe72f7dc-247e-4a53-b8c6-bc51bc7ac436
 # ╟─29195aa6-f9c5-4ceb-8708-ae2fa28a66ba
 # ╟─24be0601-338b-4d60-a3dd-79fcf9d7eaee
-# ╟─4c17a490-66d7-471b-9533-a1c6adc0218a
-# ╟─0fd3f796-80b1-433c-b775-5449613184c7
-# ╠═214e7399-d558-4ce4-a714-67c50eb74c79
+# ╟─214e7399-d558-4ce4-a714-67c50eb74c79
 # ╟─8129d2dc-62aa-41e2-bef1-b637b6e26296
 # ╟─6ad23213-e982-4573-9619-44a32fc2819e
 # ╟─478e9605-416e-475b-b9f6-86368440adbc
-# ╠═365017aa-842c-4551-a439-1cfb24c61d70
-# ╠═e08d74cf-6954-4530-9f9f-fe53f5470182
-# ╠═dc481aee-4d82-43e7-9dbe-b0b9afb29a2c
+# ╟─365017aa-842c-4551-a439-1cfb24c61d70
+# ╟─e08d74cf-6954-4530-9f9f-fe53f5470182
+# ╟─832b2a69-655e-4284-8696-65d73711b6d8
+# ╟─4c17a490-66d7-471b-9533-a1c6adc0218a
+# ╟─2f7e7ee7-6b18-40ae-9980-39d87cca0984
+# ╟─dc481aee-4d82-43e7-9dbe-b0b9afb29a2c
+# ╟─05ba4b87-25da-4bde-81a6-b2f2c04d9794
+# ╟─0fd3f796-80b1-433c-b775-5449613184c7
 # ╠═cd97aa0a-bd72-42f4-a8c1-73146ecb186d
 # ╠═f5184f31-1223-4174-8cc2-4b774c148296
 # ╠═03ae64c6-1d3d-4477-a7b5-e08e09d2b6a6
